@@ -1,0 +1,62 @@
+# ICS/OT lab 01: one simulated control network on a Docker bridge.
+#   PLC .10   HMI .20   EWS .30   attacker .66   (172.20.0.0/24)
+# All four run the same image and the same code (app/, mounted read-only);
+# the script each one runs and its IP address are the only differences.
+#
+# Capture is a separate service, off by default (profile "capture"), so a pcap
+# is started and stopped on purpose, one per scenario:
+#   PCAP=baseline docker compose --profile capture up -d capture
+
+name: ics13
+
+networks:
+  ics:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+x-pyhost: &pyhost
+  image: python:3.12-slim
+  working_dir: /app
+  volumes:
+    - ./app:/app:ro
+
+services:
+  plc:
+    <<: *pyhost
+    command: ["python", "plc.py"]
+    networks:
+      ics:
+        ipv4_address: 172.20.0.10
+
+  hmi:
+    <<: *pyhost
+    command: ["python", "hmi.py", "172.20.0.10"]
+    depends_on: [plc]
+    networks:
+      ics:
+        ipv4_address: 172.20.0.20
+
+  ews:
+    <<: *pyhost
+    command: ["sleep", "infinity"]
+    networks:
+      ics:
+        ipv4_address: 172.20.0.30
+
+  attacker:
+    <<: *pyhost
+    command: ["sleep", "infinity"]
+    networks:
+      ics:
+        ipv4_address: 172.20.0.66
+
+  capture:
+    image: nicolaka/netshoot:latest
+    profiles: ["capture"]
+    network_mode: "service:plc"   # share the PLC's interface, like a SPAN port on its switch port
+    cap_add: [NET_ADMIN, NET_RAW]
+    volumes:
+      - ../evidence/raw:/pcap
+    command: ["tcpdump", "-U", "-i", "eth0", "-w", "/pcap/${PCAP:-capture}.pcap", "port", "502"]

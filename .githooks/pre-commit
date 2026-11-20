@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Pre-commit redaction gate. Installed via:
+#   git config core.hooksPath .githooks
+# Bypass for a genuinely safe case only: git commit --no-verify
+exec "$(git rev-parse --show-toplevel)/scripts/redact-audit.sh" --staged

@@ -1,0 +1,9 @@
+# Paths excluded from the redaction audit. Format:
+#   ^path-regex$              exempt that path from every rule
+#   ^path-regex$|label        exempt that path from one rule only
+# Keep this list short and justified - every entry is a blind spot.
+
+# The audit's own rule table, the hook, and this file necessarily contain patterns.
+^scripts/redact-audit\.sh$
+^\.githooks/
+^scripts/redaction-allowlist\.txt$
